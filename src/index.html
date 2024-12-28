@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DJ Song Downloader</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans min-h-screen flex flex-col items-center p-6">
+  <!-- Header Section -->
+  <header class="w-full max-w-4xl bg-white shadow-md rounded-lg p-6 mb-6">
+    <h1 class="text-3xl font-bold text-center text-blue-500">DJ Song Downloader</h1>
+    <p class="text-center text-gray-600">Select a folder and download requested songs easily.</p>
+  </header>
+
+  <!-- Folder Selection Section -->
+  <section class="w-full max-w-4xl bg-white shadow-md rounded-lg p-6 mb-6">
+    <div class="flex flex-col items-center">
+      <button
+        id="select-folder"
+        class="bg-blue-500 text-white font-medium py-2 px-4 rounded-lg shadow hover:bg-blue-600 focus:outline-none"
+      >
+        Select Download Folder
+      </button>
+      <p id="folder-path" class="mt-4 text-sm text-gray-500">No folder selected</p>
+    </div>
+  </section>
+
+  <!-- Song List Section -->
+  <section class="w-full max-w-4xl bg-white shadow-md rounded-lg p-6">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-xl font-semibold text-gray-800">Requested Songs</h2>
+      <button
+        id="refresh-songs"
+        class="bg-indigo-500 text-white font-medium py-2 px-4 rounded-lg shadow hover:bg-indigo-600 focus:outline-none"
+      >
+        Refresh Songs
+      </button>
+    </div>
+    <ul id="song-list" class="space-y-4">
+      <!-- Songs will be dynamically added here -->
+    </ul>
+  </section>
+
+  <script>
+    let downloadFolder = '';
+
+    // Select download folder
+    document.getElementById('select-folder').onclick = async () => {
+      const folder = await window.api.selectDownloadFolder();
+      if (folder) {
+        downloadFolder = folder;
+        document.getElementById('folder-path').textContent = `Download Folder: ${folder}`;
+      }
+    };
+
+    // Load songs into the list
+    async function loadSongs() {
+      try {
+        const songs = await window.api.fetchSongs(); // Replace with your database fetch function
+        const songList = document.getElementById('song-list');
+        songList.innerHTML = '';
+
+        songs.forEach((song) => {
+          const listItem = document.createElement('li');
+          listItem.className = 'flex justify-between items-center bg-gray-50 border border-gray-200 rounded-lg p-4 shadow-sm';
+
+          const songInfo = document.createElement('div');
+          songInfo.innerHTML = `<strong>${song.title}</strong> <span class="text-gray-500">by ${song.artist}</span>`;
+          listItem.appendChild(songInfo);
+
+          const actions = document.createElement('div');
+          actions.className = 'flex space-x-2';
+
+          // Download button
+          const downloadButton = document.createElement('button');
+          downloadButton.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+            </svg>
+            `;
+          downloadButton.className = 'focus:outline-none';
+          downloadButton.onclick = async () => {
+            if (!downloadFolder) {
+              alert('Please select a download folder first.');
+              return;
+            }
+
+            try {
+              const result = await window.api.downloadSong({
+                title: song.title,
+                artist: song.artist,
+                folder: downloadFolder,
+              });
+              alert(result);
+            } catch (error) {
+            }
+          };
+          actions.appendChild(downloadButton);
+
+          // Delete button
+          const deleteButton = document.createElement('button');
+          deleteButton.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+          </svg>
+          `;
+          deleteButton.className = 'focus:outline-none';
+          deleteButton.onclick = async () => {
+            try {
+              const result = await window.api.deleteSong({id: song.id});
+              loadSongs(); // Refresh the list after deletion
+            } catch (error) {
+              alert(error);
+            }
+          };
+          actions.appendChild(deleteButton);
+
+          listItem.appendChild(actions);
+          songList.appendChild(listItem);
+        });
+      } catch (error) {
+        console.error('Error loading songs:', error);
+        alert('Failed to load songs. Please try again.');
+      }
+    }
+
+    // Refresh songs button
+    document.getElementById('refresh-songs').onclick = loadSongs;
+
+    // Load songs on initial page load
+    loadSongs();
+  </script>
+</body>
+</html>
